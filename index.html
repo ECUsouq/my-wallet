@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="description" content="محفظة العملات الرقمية - تتبع الربح والخسارة و DCA" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>محفظتي للعملات</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --border: #334155;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --primary: #3b82f6;
+      --success: #22c55e;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+      line-height: 1.5;
+    }
+    .header {
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      padding: 1.2rem 1rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      border-bottom: 1px solid var(--border);
+    }
+    .header h1 { font-size: 1.35rem; font-weight: 700; }
+    .header .sub { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      padding: 1rem;
+    }
+    .summary-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 0.9rem;
+      border: 1px solid var(--border);
+    }
+    .summary-card .label { font-size: 0.75rem; color: var(--muted); }
+    .summary-card .value { font-size: 1.15rem; font-weight: 700; margin-top: 4px; }
+    .profit { color: var(--success); }
+    .loss { color: var(--danger); }
+    .coins { padding: 0 1rem 1rem; }
+    .coin-card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid var(--border);
+    }
+    .coin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.6rem;
+    }
+    .coin-name { font-weight: 700; font-size: 1.05rem; }
+    .coin-symbol { color: var(--muted); font-size: 0.85rem; }
+    .coin-pnl { font-weight: 700; font-size: 0.95rem; text-align: left; }
+    .coin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem 1rem;
+      font-size: 0.82rem;
+    }
+    .coin-grid .lbl { color: var(--muted); }
+    .coin-grid .val { font-weight: 600; }
+    .actions-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex;
+      padding: 0.6rem;
+      gap: 0.5rem;
+      z-index: 100;
+      padding-bottom: max(0.6rem, env(safe-area-inset-bottom));
+    }
+    .btn {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 0.85rem 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-secondary { background: #334155; color: var(--text); }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn:active { opacity: 0.85; }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal.open { display: flex; }
+    .modal-content {
+      background: var(--card);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 20px 20px 0 0;
+      padding: 1.25rem;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h2 { font-size: 1.2rem; margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 1rem;
+      font-family: inherit;
+      direction: rtl;
+      text-align: right;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .modal-actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+    .empty {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--muted);
+    }
+    .empty .icon { font-size: 3rem; margin-bottom: 0.75rem; }
+    .toast {
+      position: fixed;
+      top: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: white;
+      padding: 0.75rem 1.25rem;
+      border-radius: 10px;
+      z-index: 300;
+      font-size: 0.9rem;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      max-width: 90%;
+      text-align: center;
+    }
+    .toast.show { opacity: 1; }
+    .source-badge {
+      font-size: 0.7rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      text-align: center;
+    }
+    .refresh-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 0.3rem 0.6rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .loading { opacity: 0.6; pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h1>💰 محفظتي للعملات</h1>
+        <div class="sub" id="lastUpdate">جاري التحميل...</div>
+      </div>
+      <button class="refresh-btn" onclick="refreshPrices()" id="refreshBtn">🔄 تحديث</button>
+    </div>
+  </div>
+
+  <div class="summary" id="summary">
+    <div class="summary-card">
+      <div class="label">إجمالي المستثمر</div>
+      <div class="value" id="totalInvested">$0.00</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">القيمة الحالية</div>
+      <div class="value" id="totalValue">$0.00</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">الربح / الخسارة</div>
+      <div class="value" id="totalPnl">$0.00</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">النسبة %</div>
+      <div class="value" id="totalPnlPct">0.00%</div>
+    </div>
+  </div>
+
+  <div class="coins" id="coinsList"></div>
+  <div class="source-badge" id="sourceInfo"></div>
+
+  <div class="actions-bar">
+    <button class="btn btn-primary" onclick="openAddModal()">➕ إضافة عملة</button>
+    <button class="btn btn-secondary" onclick="openDcaModal()">📥 DCA</button>
+  </div>
+
+  <!-- Modal إضافة -->
+  <div class="modal" id="addModal">
+    <div class="modal-content">
+      <h2>إضافة عملة جديدة</h2>
+      <div class="form-group">
+        <label>اسم أو رمز العملة (مثل BTC أو bitcoin أو SOL)</label>
+        <input type="text" id="addSymbol" placeholder="BTC / ethereum / solana" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label>الكمية</label>
+        <input type="number" id="addQty" step="any" min="0" placeholder="0.0" />
+      </div>
+      <div class="form-group">
+        <label>المبلغ الكلي للشراء (بالدولار)</label>
+        <input type="number" id="addCost" step="any" min="0" placeholder="0.00" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModals()">إلغاء</button>
+        <button class="btn btn-primary" onclick="addCoin()">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal DCA -->
+  <div class="modal" id="dcaModal">
+    <div class="modal-content">
+      <h2>DCA - شراء إضافي</h2>
+      <div class="form-group">
+        <label>اختر العملة</label>
+        <select id="dcaSelect"></select>
+      </div>
+      <div class="form-group">
+        <label>الكمية الجديدة</label>
+        <input type="number" id="dcaQty" step="any" min="0" placeholder="0.0" />
+      </div>
+      <div class="form-group">
+        <label>مبلغ الشراء الجديد ($)</label>
+        <input type="number" id="dcaCost" step="any" min="0" placeholder="0.00" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModals()">إلغاء</button>
+        <button class="btn btn-primary" onclick="applyDca()">تطبيق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal حذف -->
+  <div class="modal" id="deleteModal">
+    <div class="modal-content">
+      <h2>تأكيد الحذف</h2>
+      <p id="deleteText" style="margin-bottom:1rem;color:var(--muted);"></p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModals()">إلغاء</button>
+        <button class="btn btn-danger" onclick="confirmDelete()">حذف</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ==================== البيانات ====================
+    const STORAGE_KEY = 'crypto_portfolio_v1';
+    let portfolio = {};
+    let prices = {}; // { id: { price, change24h, source } }
+    let deleteId = null;
+
+    // خريطة شائعة: رمز/اسم → بيانات CoinPaprika + CoinGecko
+    const COIN_MAP = {
+      btc: { paprika: 'btc-bitcoin', gecko: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' },
+      bitcoin: { paprika: 'btc-bitcoin', gecko: 'bitcoin', name: 'Bitcoin', symbol: 'BTC' },
+      eth: { paprika: 'eth-ethereum', gecko: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
+      ethereum: { paprika: 'eth-ethereum', gecko: 'ethereum', name: 'Ethereum', symbol: 'ETH' },
+      sol: { paprika: 'sol-solana', gecko: 'solana', name: 'Solana', symbol: 'SOL' },
+      solana: { paprika: 'sol-solana', gecko: 'solana', name: 'Solana', symbol: 'SOL' },
+      bnb: { paprika: 'bnb-binance-coin', gecko: 'binancecoin', name: 'BNB', symbol: 'BNB' },
+      binancecoin: { paprika: 'bnb-binance-coin', gecko: 'binancecoin', name: 'BNB', symbol: 'BNB' },
+      xrp: { paprika: 'xrp-xrp', gecko: 'ripple', name: 'XRP', symbol: 'XRP' },
+      ripple: { paprika: 'xrp-xrp', gecko: 'ripple', name: 'XRP', symbol: 'XRP' },
+      ada: { paprika: 'ada-cardano', gecko: 'cardano', name: 'Cardano', symbol: 'ADA' },
+      cardano: { paprika: 'ada-cardano', gecko: 'cardano', name: 'Cardano', symbol: 'ADA' },
+      doge: { paprika: 'doge-dogecoin', gecko: 'dogecoin', name: 'Dogecoin', symbol: 'DOGE' },
+      dogecoin: { paprika: 'doge-dogecoin', gecko: 'dogecoin', name: 'Dogecoin', symbol: 'DOGE' },
+      dot: { paprika: 'dot-polkadot', gecko: 'polkadot', name: 'Polkadot', symbol: 'DOT' },
+      polkadot: { paprika: 'dot-polkadot', gecko: 'polkadot', name: 'Polkadot', symbol: 'DOT' },
+      avax: { paprika: 'avax-avalanche', gecko: 'avalanche-2', name: 'Avalanche', symbol: 'AVAX' },
+      avalanche: { paprika: 'avax-avalanche', gecko: 'avalanche-2', name: 'Avalanche', symbol: 'AVAX' },
+      link: { paprika: 'link-chainlink', gecko: 'chainlink', name: 'Chainlink', symbol: 'LINK' },
+      chainlink: { paprika: 'link-chainlink', gecko: 'chainlink', name: 'Chainlink', symbol: 'LINK' },
+      matic: { paprika: 'matic-polygon', gecko: 'matic-network', name: 'Polygon', symbol: 'MATIC' },
+      polygon: { paprika: 'matic-polygon', gecko: 'matic-network', name: 'Polygon', symbol: 'MATIC' },
+      near: { paprika: 'near-near-protocol', gecko: 'near', name: 'NEAR', symbol: 'NEAR' },
+      apt: { paprika: 'apt-aptos', gecko: 'aptos', name: 'Aptos', symbol: 'APT' },
+      aptos: { paprika: 'apt-aptos', gecko: 'aptos', name: 'Aptos', symbol: 'APT' },
+      arb: { paprika: 'arb-arbitrum', gecko: 'arbitrum', name: 'Arbitrum', symbol: 'ARB' },
+      op: { paprika: 'op-optimism', gecko: 'optimism', name: 'Optimism', symbol: 'OP' },
+      sui: { paprika: 'sui-sui', gecko: 'sui', name: 'Sui', symbol: 'SUI' },
+      ton: { paprika: 'ton-toncoin', gecko: 'the-open-network', name: 'Toncoin', symbol: 'TON' },
+      toncoin: { paprika: 'ton-toncoin', gecko: 'the-open-network', name: 'Toncoin', symbol: 'TON' },
+      trx: { paprika: 'trx-tron', gecko: 'tron', name: 'TRON', symbol: 'TRX' },
+      tron: { paprika: 'trx-tron', gecko: 'tron', name: 'TRON', symbol: 'TRX' },
+      ltc: { paprika: 'ltc-litecoin', gecko: 'litecoin', name: 'Litecoin', symbol: 'LTC' },
+      litecoin: { paprika: 'ltc-litecoin', gecko: 'litecoin', name: 'Litecoin', symbol: 'LTC' },
+      pepe: { paprika: 'pepe-pepe', gecko: 'pepe', name: 'Pepe', symbol: 'PEPE' },
+      shib: { paprika: 'shib-shiba-inu', gecko: 'shiba-inu', name: 'Shiba Inu', symbol: 'SHIB' },
+      usdt: { paprika: 'usdt-tether', gecko: 'tether', name: 'Tether', symbol: 'USDT' },
+      usdc: { paprika: 'usdc-usd-coin', gecko: 'usd-coin', name: 'USD Coin', symbol: 'USDC' },
+    };
+
+    // ==================== التخزين ====================
+    function loadPortfolio() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        portfolio = raw ? JSON.parse(raw) : {};
+      } catch (e) {
+        portfolio = {};
+      }
+    }
+
+    function savePortfolio() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+    }
+
+    // ==================== الأسعار (مصدرين على الأقل) ====================
+    async function fetchFromPaprika(ids) {
+      // ids هنا هي paprika ids
+      const results = {};
+      const promises = ids.map(async (id) => {
+        try {
+          const r = await fetch(`https://api.coinpaprika.com/v1/tickers/${id}`, { signal: AbortSignal.timeout(8000) });
+          if (!r.ok) return;
+          const d = await r.json();
+          if (d.quotes && d.quotes.USD) {
+            results[id] = {
+              price: d.quotes.USD.price,
+              change24h: d.quotes.USD.percent_change_24h,
+              source: 'CoinPaprika'
+            };
+          }
+        } catch (e) {}
+      });
+      await Promise.all(promises);
+      return results;
+    }
+
+    async function fetchFromGecko(geckoIds) {
+      if (!geckoIds.length) return {};
+      try {
+        const ids = geckoIds.join(',');
+        const r = await fetch(
+          `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (!r.ok) return {};
+        const d = await r.json();
+        const results = {};
+        for (const [gid, data] of Object.entries(d)) {
+          results[gid] = {
+            price: data.usd,
+            change24h: data.usd_24h_change,
+            source: 'CoinGecko'
+          };
+        }
+        return results;
+      } catch (e) {
+        return {};
+      }
+    }
+
+    async function resolveCoin(input) {
+      const key = input.trim().toLowerCase();
+      if (COIN_MAP[key]) {
+        return { ...COIN_MAP[key], id: key };
+      }
+      // بحث CoinPaprika
+      try {
+        const r = await fetch(`https://api.coinpaprika.com/v1/search?q=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(7000) });
+        if (r.ok) {
+          const d = await r.json();
+          const currencies = d.currencies || [];
+          if (currencies.length) {
+            // نفضل المطابقة الدقيقة للرمز
+            let best = currencies.find(c => c.symbol.toLowerCase() === key) || currencies[0];
+            return {
+              paprika: best.id,
+              gecko: null, // سنحاول لاحقًا
+              name: best.name,
+              symbol: best.symbol,
+              id: best.id
+            };
+          }
+        }
+      } catch (e) {}
+      // بحث CoinGecko كاحتياطي
+      try {
+        const r = await fetch(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(key)}`, { signal: AbortSignal.timeout(7000) });
+        if (r.ok) {
+          const d = await r.json();
+          const coins = d.coins || [];
+          if (coins.length) {
+            let best = coins.find(c => c.symbol.toLowerCase() === key) || coins[0];
+            return {
+              paprika: null,
+              gecko: best.id,
+              name: best.name,
+              symbol: best.symbol.toUpperCase(),
+              id: best.id
+            };
+          }
+        }
+      } catch (e) {}
+      return null;
+    }
+
+    async function refreshPrices() {
+      const btn = document.getElementById('refreshBtn');
+      btn.classList.add('loading');
+      btn.textContent = '⏳ ...';
+
+      const paprikaIds = [];
+      const geckoIds = [];
+      const mapping = {}; // internalKey -> { paprika?, gecko? }
+
+      for (const [key, coin] of Object.entries(portfolio)) {
+        mapping[key] = { paprika: coin.paprikaId, gecko: coin.geckoId };
+        if (coin.paprikaId) paprikaIds.push(coin.paprikaId);
+        if (coin.geckoId) geckoIds.push(coin.geckoId);
+      }
+
+      // 1) جرب CoinPaprika أولاً
+      let paprikaPrices = {};
+      if (paprikaIds.length) {
+        paprikaPrices = await fetchFromPaprika([...new Set(paprikaIds)]);
+      }
+
+      // 2) للعملات اللي فشل فيها أو مفيش paprika، جرب Gecko
+      const needGecko = [];
+      for (const [key, m] of Object.entries(mapping)) {
+        const hasPaprika = m.paprika && paprikaPrices[m.paprika];
+        if (!hasPaprika && m.gecko) {
+          needGecko.push(m.gecko);
+        }
+      }
+
+      let geckoPrices = {};
+      if (needGecko.length) {
+        geckoPrices = await fetchFromGecko([...new Set(needGecko)]);
+      }
+
+      // دمج النتائج
+      prices = {};
+      let sourcesUsed = new Set();
+      for (const [key, coin] of Object.entries(portfolio)) {
+        if (coin.paprikaId && paprikaPrices[coin.paprikaId]) {
+          prices[key] = paprikaPrices[coin.paprikaId];
+          sourcesUsed.add('CoinPaprika');
+        } else if (coin.geckoId && geckoPrices[coin.geckoId]) {
+          prices[key] = geckoPrices[coin.geckoId];
+          sourcesUsed.add('CoinGecko');
+        }
+      }
+
+      // لو في عملات لسه مفيش سعر، جرب Gecko لكل الـ geckoIds كمحاولة أخيرة
+      if (Object.keys(prices).length < Object.keys(portfolio).length && geckoIds.length) {
+        const remaining = geckoIds.filter(g => {
+          return !Object.values(prices).some(p => false); // just fetch all remaining
+        });
+        const extra = await fetchFromGecko(geckoIds);
+        for (const [key, coin] of Object.entries(portfolio)) {
+          if (!prices[key] && coin.geckoId && extra[coin.geckoId]) {
+            prices[key] = extra[coin.geckoId];
+            sourcesUsed.add('CoinGecko');
+          }
+        }
+      }
+
+      render();
+      const now = new Date();
+      document.getElementById('lastUpdate').textContent =
+        `آخر تحديث: ${now.toLocaleTimeString('ar-EG')} | المصادر: ${[...sourcesUsed].join(' + ') || 'لا يوجد'}`;
+      document.getElementById('sourceInfo').textContent =
+        sourcesUsed.size ? `الأسعار من: ${[...sourcesUsed].join(' و ')}` : 'تعذر جلب الأسعار - تحقق من الإنترنت';
+
+      btn.classList.remove('loading');
+      btn.textContent = '🔄 تحديث';
+      showToast(sourcesUsed.size ? 'تم تحديث الأسعار' : 'فشل جلب الأسعار');
+    }
+
+    // ==================== العرض ====================
+    function formatNum(n, dec = 2) {
+      if (n == null || isNaN(n)) return '—';
+      if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+      return n.toLocaleString('en-US', { maximumFractionDigits: dec });
+    }
+
+    function render() {
+      const list = document.getElementById('coinsList');
+      let totalInvested = 0;
+      let totalValue = 0;
+
+      if (Object.keys(portfolio).length === 0) {
+        list.innerHTML = `
+          <div class="empty">
+            <div class="icon">📭</div>
+            <div>المحفظة فارغة</div>
+            <div style="font-size:0.85rem;margin-top:0.5rem;">اضغط "إضافة عملة" للبدء</div>
+          </div>`;
+        document.getElementById('totalInvested').textContent = '$0.00';
+        document.getElementById('totalValue').textContent = '$0.00';
+        document.getElementById('totalPnl').textContent = '$0.00';
+        document.getElementById('totalPnlPct').textContent = '0.00%';
+        document.getElementById('totalPnl').className = 'value';
+        document.getElementById('totalPnlPct').className = 'value';
+        return;
+      }
+
+      let html = '';
+      for (const [key, coin] of Object.entries(portfolio)) {
+        const qty = coin.quantity;
+        const cost = coin.totalCost;
+        const avg = coin.avgPrice;
+        const p = prices[key];
+        const currentPrice = p ? p.price : null;
+        const change24 = p ? p.change24h : null;
+        const value = currentPrice != null ? qty * currentPrice : null;
+        const pnl = value != null ? value - cost : null;
+        const pnlPct = (pnl != null && cost > 0) ? (pnl / cost * 100) : null;
+
+        totalInvested += cost;
+        if (value != null) totalValue += value;
+
+        const pnlClass = pnl == null ? '' : (pnl >= 0 ? 'profit' : 'loss');
+        const changeClass = change24 == null ? '' : (change24 >= 0 ? 'profit' : 'loss');
+
+        html += `
+          <div class="coin-card">
+            <div class="coin-header">
+              <div>
+                <div class="coin-name">${coin.name}</div>
+                <div class="coin-symbol">${coin.symbol}</div>
+              </div>
+              <div class="coin-pnl ${pnlClass}">
+                ${pnl != null ? (pnl >= 0 ? '+' : '') + '$' + formatNum(pnl) : '—'}
+                <div style="font-size:0.8rem;">${pnlPct != null ? (pnlPct >= 0 ? '+' : '') + formatNum(pnlPct) + '%' : ''}</div>
+              </div>
+            </div>
+            <div class="coin-grid">
+              <div><span class="lbl">الكمية: </span><span class="val">${formatNum(qty, 6)}</span></div>
+              <div><span class="lbl">متوسط الدخول: </span><span class="val">$${formatNum(avg, 6)}</span></div>
+              <div><span class="lbl">السعر الحالي: </span><span class="val">${currentPrice != null ? '$' + formatNum(currentPrice, 6) : '—'}</span></div>
+              <div><span class="lbl">التغيير 24س: </span><span class="val ${changeClass}">${change24 != null ? formatNum(change24) + '%' : '—'}</span></div>
+              <div><span class="lbl">القيمة: </span><span class="val">${value != null ? '$' + formatNum(value) : '—'}</span></div>
+              <div><span class="lbl">التكلفة: </span><span class="val">$${formatNum(cost)}</span></div>
+            </div>
+            <div style="margin-top:0.7rem;display:flex;gap:0.4rem;">
+              <button class="btn btn-secondary" style="flex:1;padding:0.5rem;font-size:0.8rem;" onclick="openDcaFor('${key}')">DCA</button>
+              <button class="btn btn-danger" style="flex:0.6;padding:0.5rem;font-size:0.8rem;" onclick="askDelete('${key}')">حذف</button>
+            </div>
+          </div>`;
+      }
+      list.innerHTML = html;
+
+      const totalPnl = totalValue - totalInvested;
+      const totalPnlPct = totalInvested > 0 ? (totalPnl / totalInvested * 100) : 0;
+
+      document.getElementById('totalInvested').textContent = '$' + formatNum(totalInvested);
+      document.getElementById('totalValue').textContent = totalValue > 0 ? '$' + formatNum(totalValue) : '—';
+      document.getElementById('totalPnl').textContent = (totalPnl >= 0 ? '+' : '') + '$' + formatNum(totalPnl);
+      document.getElementById('totalPnlPct').textContent = (totalPnlPct >= 0 ? '+' : '') + formatNum(totalPnlPct) + '%';
+      document.getElementById('totalPnl').className = 'value ' + (totalPnl >= 0 ? 'profit' : 'loss');
+      document.getElementById('totalPnlPct').className = 'value ' + (totalPnl >= 0 ? 'profit' : 'loss');
+    }
+
+    // ==================== العمليات ====================
+    function openAddModal() {
+      document.getElementById('addSymbol').value = '';
+      document.getElementById('addQty').value = '';
+      document.getElementById('addCost').value = '';
+      document.getElementById('addModal').classList.add('open');
+    }
+
+    function openDcaModal() {
+      const sel = document.getElementById('dcaSelect');
+      sel.innerHTML = '';
+      for (const [key, coin] of Object.entries(portfolio)) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = `${coin.name} (${coin.symbol})`;
+        sel.appendChild(opt);
+      }
+      if (!Object.keys(portfolio).length) {
+        showToast('أضف عملة أولاً');
+        return;
+      }
+      document.getElementById('dcaQty').value = '';
+      document.getElementById('dcaCost').value = '';
+      document.getElementById('dcaModal').classList.add('open');
+    }
+
+    function openDcaFor(key) {
+      openDcaModal();
+      document.getElementById('dcaSelect').value = key;
+    }
+
+    function closeModals() {
+      document.querySelectorAll('.modal').forEach(m => m.classList.remove('open'));
+    }
+
+    async function addCoin() {
+      const input = document.getElementById('addSymbol').value.trim();
+      const qty = parseFloat(document.getElementById('addQty').value);
+      const cost = parseFloat(document.getElementById('addCost').value);
+
+      if (!input || !(qty > 0) || !(cost > 0)) {
+        showToast('أدخل كل البيانات بشكل صحيح');
+        return;
+      }
+
+      showToast('جاري البحث عن العملة...');
+      const resolved = await resolveCoin(input);
+      if (!resolved) {
+        showToast('لم أتعرف على العملة. جرب BTC أو ethereum أو solana');
+        return;
+      }
+
+      const key = resolved.paprika || resolved.gecko || resolved.id;
+      // لو العملة موجودة بالفعل (نفس الـ id)
+      if (portfolio[key]) {
+        showToast('العملة موجودة بالفعل. استخدم DCA للإضافة');
+        return;
+      }
+      // تحقق إضافي من وجود نفس الرمز
+      const existingBySymbol = Object.values(portfolio).find(c => c.symbol.toUpperCase() === resolved.symbol.toUpperCase());
+      if (existingBySymbol) {
+        showToast('العملة موجودة بالفعل. استخدم DCA للإضافة');
+        return;
+      }
+
+      const avg = cost / qty;
+      portfolio[key] = {
+        name: resolved.name,
+        symbol: resolved.symbol.toUpperCase(),
+        quantity: qty,
+        totalCost: cost,
+        avgPrice: avg,
+        paprikaId: resolved.paprika || null,
+        geckoId: resolved.gecko || null,
+        addedAt: new Date().toISOString()
+      };
+      savePortfolio();
+      closeModals();
+      showToast(`تم إضافة ${resolved.name}`);
+      render();
+      refreshPrices();
+    }
+
+    function applyDca() {
+      const key = document.getElementById('dcaSelect').value;
+      const addQty = parseFloat(document.getElementById('dcaQty').value);
+      const addCost = parseFloat(document.getElementById('dcaCost').value);
+
+      if (!(addQty > 0) || !(addCost > 0)) {
+        showToast('أدخل كمية ومبلغ صحيحين');
+        return;
+      }
+      if (!key || !portfolio[key]) {
+        showToast('اختر عملة أولاً');
+        return;
+      }
+
+      const coin = portfolio[key];
+      const newQty = coin.quantity + addQty;
+      const newCost = coin.totalCost + addCost;
+      coin.quantity = newQty;
+      coin.totalCost = newCost;
+      coin.avgPrice = newCost / newQty;
+      savePortfolio();
+      closeModals();
+      showToast(`تم تحديث ${coin.name} - متوسط جديد: $${formatNum(coin.avgPrice, 6)}`);
+      render();
+      refreshPrices();
+    }
+
+    function askDelete(key) {
+      deleteId = key;
+      const coin = portfolio[key];
+      document.getElementById('deleteText').textContent = `هل تريد حذف ${coin.name} (${coin.symbol}) نهائيًا؟`;
+      document.getElementById('deleteModal').classList.add('open');
+    }
+
+    function confirmDelete() {
+      if (deleteId && portfolio[deleteId]) {
+        const name = portfolio[deleteId].name;
+        delete portfolio[deleteId];
+        savePortfolio();
+        showToast(`تم حذف ${name}`);
+        render();
+      }
+      closeModals();
+      deleteId = null;
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2800);
+    }
+
+    // ==================== PWA ====================
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+
+    // ==================== بدء ====================
+    loadPortfolio();
+    render();
+    refreshPrices();
+
+    // إغلاق المودال بالضغط خارج المحتوى
+    document.querySelectorAll('.modal').forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModals();
+      });
+    });
+  </script>
+</body>
+</html>
